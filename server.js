@@ -7,8 +7,8 @@ const busboy = require('busboy');
 const fs = require('fs');
 const path = require('path');
 
-const portDownload = 8080
-const portUpload = 3000
+const portDownload = 8000
+const portUpload = 4000
 var dirUpload = 'upload';
 
 if (!fs.existsSync(dirUpload)) {
@@ -33,6 +33,7 @@ const serverUpload = http.createServer((req, res) => {
   if (req.url === '/') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(`
+   <body>
       <form action="/upload" enctype="multipart/form-data" method="post">
         <input type="file" name="someCoolFiles" multiple>
         <br><br>
@@ -42,21 +43,22 @@ const serverUpload = http.createServer((req, res) => {
       </form>
       <br>
       <a href="./" onclick="javascript:event.target.port=${portDownload}">View files</a>
-    `);
+    </body></html>`);
   } else if (req.url === '/upload') {
     let filename = '';
     let filenames = []
     const bb = busboy({ headers: req.headers });
     bb.on('file', (name, file, info) => {
-      filename = info.filename;
+      filename = decode(info.filename);
       filenames.push(filename);
 
-      const saveTo = path.join(__dirname, dirUpload, filename);
+console.log(filename)
+      const saveTo = "./" + dirUpload + "/" + filename;
       file.pipe(fs.createWriteStream(saveTo));
       console.log('upload', filename)
     });
     bb.on('close', () => {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.writeHead(200, { 'Content-Type': 'text/html;charset=utf-8'});
       res.end(`upload success: Folder ${serverIp}:${portDownload}/${dirUpload} 
       ${'\n' + filenames.map(el => `<br><a href="http://${serverIp}:${portDownload}/${dirUpload}/${el}">${serverIp}:${portDownload}/${dirUpload}/${el}</a>`)}`);
     });
@@ -72,4 +74,7 @@ serverUpload.listen(portUpload, () => {
 });
 
 
-
+function decode(str) {
+			return str.replace(/&#(\d+);/g, function(match, dec) {
+				return String.fromCharCode(dec);
+			})}
